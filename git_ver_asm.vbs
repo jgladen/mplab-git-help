@@ -12,6 +12,7 @@ Const VERSION_REV_SIZE = 16
 const DB_PER_LINE = 8
 Const OUTPUT_FILE = "version.inc"
 
+Const CODE_SECTION = "ORG"
 
 Main
 
@@ -25,7 +26,7 @@ Sub FormatContent(aryContent, strTag, strRev)
 	
 	
 	
-	push_back aryContent, VERSION_TABLE_LABEL & VbTab & "CODE" & VbTab & "H'" & VERSION_TABLE_LOCATION & "'"
+	push_back aryContent, VERSION_TABLE_LABEL & VbTab & CODE_SECTION & VbTab & "H'" & VERSION_TABLE_LOCATION & "'"
 
 	push_back aryContent, ""
 	push_back aryContent, ""
