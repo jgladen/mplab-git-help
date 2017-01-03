@@ -13,6 +13,8 @@ Const OUTPUT_FILE = "version.inc"
 
 Const CODE_SECTION = "ORG"
 
+Dim g_strGitCommand
+
 Main
 
 Sub FormatContent(aryContent, strTag, strRev)
@@ -48,11 +50,10 @@ Sub FormatContent(aryContent, strTag, strRev)
 End Sub
 
 
-Sub Main
+Sub Main	
 	
-	Dim strGitCommand
 	dim aryMsg
-	If Not WhereIs_GitCommand(strGitCommand) Then
+	If Not WhereIs_GitCommand(g_strGitCommand) Then
 		
 		aryMsg=array()
 		push_back aryMsg, "ERROR: Can't find Git.exe. Git Extensions may not be installed yet."
@@ -70,29 +71,60 @@ Sub Main
 
 	Dim oShell: Set oShell = WScript.CreateObject("Wscript.Shell")
 	
+	Dim fso : Set fso = WScript.CreateObject("Scripting.FileSystemObject")
+	
+	Dim strCdUp: strCdUp = Exec_Git_Line("rev-parse --show-cdup")
+	
+	Dim aryStatus: aryStatus = Exec_Git_List("status --porcelain -u .")
+	
+	Dim strStatus
+	Dim strPath
+	Dim oFile
+	Dim dtLastModified
+	For Each strStatus In aryStatus
+		strPath = strCdUp & Mid(strStatus,4)
+		strPath = Replace(strPath,"/","\")
+		On Error Resume Next
+		Set oFile = fso.GetFile(strPath)
+		On Error Goto 0
+		If Not oFile Is Nothing Then 
+			If Not IsEmpty(dtLastModified) Then 				
+				If dtLastModified < oFile.DateLastModified Then
+					dtLastModified = oFile.DateLastModified
+				End If
+			Else
+				dtLastModified = oFile.DateLastModified
+			End If			
+			'WScript.StdErr.WriteLine(strPath & " " & oFile.DateLastModified)
+		End If
+	Next
+	
+	Dim strTimeStamp
+	If Not IsEmpty(dtLastModified) Then
+		strTimeStamp = Right("000" & hex(Hour(dtLastModified)* 600 + Minute(dtLastModified)* 10 + Second(dtLastModified)\6),4)
+		'WScript.StdErr.WriteLine("TimeStamp: " & strTimeStamp)
+	End If
 	
 	Dim aryCmd:aryCmd=Array()
 	
-	push_back aryCmd, ShellQuote(strGitCommand)
+	Dim aryParam	
+	aryParam=Array()	
 	
-	push_back aryCmd, "describe"
-	push_back aryCmd, "--tags"
-	push_back aryCmd, "--long"	
-	push_back aryCmd, "--dirty=_X"
-	push_back aryCmd, "--abbrev=7"
-	push_back aryCmd, "--always"	
-		
-	Dim strCmd: strCmd=Join(aryCmd," ")
+	push_back aryParam, "describe"
+	push_back aryParam, "--tags"
+	push_back aryParam, "--long"	
 	
-	Dim strVersion, oProcOut, oProc
 	
-	Set oProc=oShell.Exec(strCmd)
-	If Err.Number<>0 Then Exit Sub
-	On Error Goto 0	
-		
-	Set oProcOut=oProc.StdOut
-	If Not oProcOut.AtEndOfStream Then strVersion = oProcOut.ReadLine() 	
-	Set oProcOut=Nothing : oProc.Terminate: Set oProc=Nothing
+	If IsEmpty(strTimeStamp) Then 
+		push_back aryParam, "--dirty=_X"
+	Else
+		push_back aryParam, "--dirty=_" & strTimeStamp
+	End If
+	
+	push_back aryParam, "--abbrev=7"
+	push_back aryParam, "--always"
+	
+	Dim strVersion: strVersion = Exec_Git_Line(aryParam)
 
 	Dim strVersionTag, strVersionRev, nLast
 	nLast = InStrRev(strVersion,"-")
@@ -297,3 +329,70 @@ Function FormatDataByte(strChar)
 End Function
 
 
+Function Exec_Git_Line(aryParam)
+	Dim oShell: Set oShell = WScript.CreateObject("Wscript.Shell")
+	
+	Dim aryCmd: aryCmd=Array()	
+	Dim strParam
+	push_back aryCmd, ShellQuote(g_strGitCommand)
+	
+	Select Case VarType(aryParam)
+    Case vbNull, vbEmpty
+    Case vbVariant, vbArray, vbVariant + vbArray
+	    For Each strParam In aryParam			
+			push_back aryCmd, ShellQuote(strParam)
+		Next
+    Case Else
+    	push_back aryCmd, CStr(aryParam)
+    End Select
+
+	Dim strCmd: strCmd=Join(aryCmd," ")
+
+	Dim oProc: Set oProc=oShell.Exec(strCmd)
+	If Err.Number<>0 Then Exit Function
+	On Error Goto 0	
+		
+	Dim oProcOut: Set oProcOut=oProc.StdOut
+	If Not oProcOut.AtEndOfStream Then Exec_Git_Line = oProcOut.ReadLine() Else Exec_Git_Line=""
+	Set oProcOut=Nothing : oProc.Terminate: Set oProc=Nothing
+
+	Set oShell = Nothing
+
+End Function
+
+Function Exec_Git_List(aryParam)
+	Dim oShell: Set oShell = WScript.CreateObject("Wscript.Shell")
+	
+	Dim aryResult:aryResult=Array()	
+	
+	Dim aryCmd: aryCmd=Array()	
+	Dim strParam
+	push_back aryCmd, ShellQuote(g_strGitCommand)
+	
+	Select Case VarType(aryParam)
+    Case vbNull, vbEmpty
+    Case vbVariant, vbArray, vbVariant + vbArray
+	    For Each strParam In aryParam			
+			push_back aryCmd, ShellQuote(strParam)
+		Next
+    Case Else
+    	push_back aryCmd, CStr(aryParam)
+    End Select
+
+	Dim strCmd: strCmd=Join(aryCmd," ")
+
+	Dim oProc: Set oProc=oShell.Exec(strCmd)
+	If Err.Number<>0 Then Exit Function
+	On Error Goto 0	
+		
+	Dim oProcOut: Set oProcOut=oProc.StdOut
+	While Not oProcOut.AtEndOfStream 
+		push_back aryResult, oProcOut.ReadLine()
+	Wend
+	Set oProcOut=Nothing : oProc.Terminate: Set oProc=Nothing
+
+	Set oShell = Nothing
+	
+	Exec_Git_List = aryResult
+
+End Function
