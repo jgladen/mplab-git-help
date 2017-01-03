@@ -8,23 +8,23 @@
 
 # For C projects on MPLAB X #
 
-Add theses lines to the Makefile ...
- 
-    .build-pre:
+Modify the .build-pre and .build-post rules in the Makefile to look like this...
+
+    .build-pre:    
+            cscript.exe /nologo git_version.vbs
     # Add your pre 'build' code here...
-    	cscript.exe /nologo git_version.vbs
-    
+
     .build-post: .build-impl
+            cscript.exe /nologo git_store_hex.vbs "${CND_ARTIFACT_PATH_${CONF}}"
     # Add your post 'build' code here...
-    	cscript.exe /nologo git_store_hex.vbs "${CND_ARTIFACT_PATH_${CONF}}"
-    
+
 ... and copy these two script files to the same folder:
 
 	git_version.vbs
 	git_store_hex.vbs
 
 
-Add this to your .gitignore:
+  Add this to your .gitignore:
 
     *.d
     *.pre
@@ -51,8 +51,8 @@ Add this to your .gitignore:
     !*.hex
     /version.c
     hex/
-    
-    
+
+
 
 
 
@@ -60,7 +60,11 @@ Add this to your .gitignore:
 
 
 Set Prebuild step to:
- 
+
+	cscript /nologo git_ver_asm.vbs
+
+or for retlw instead of db use this instead...
+
 	cscript /nologo git_ver_asm_retlw.vbs
 
 Set Post build step to:
