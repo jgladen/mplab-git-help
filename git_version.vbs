@@ -110,16 +110,25 @@ Sub Main
 	strTag = """" & OUTPUT_FILE & """ <- " & Trim(strLine1) & ", " & Trim(strLine2)
 
 	If GetFileContent(OUTPUT_FILE,strContent) Then
-		If strContent<>strNewContent Then
-			WScript.StdErr.WriteLine("Updating " & strTag)
+		If strContent<>strNewContent Then      
+      ReportResult "Updating " & strTag
 			SetFileContent OUTPUT_FILE, strNewContent
 		Else
-			WScript.StdErr.WriteLine("Checked (No Change) " &  strTag)
+			ReportResult "Checked (No Change) " &  strTag
 		End If
 	Else
-		WScript.StdErr.WriteLine("Writeing New " &  strTag)
+		ReportResult "Writeing New " &  strTag
 		SetFileContent OUTPUT_FILE, strNewContent
 	End If
+
+End Sub
+
+Sub ReportResult(strMessage)
+  If InStr(1, WScript.FullName, "cscript", vbTextCompare) Then
+      WScript.StdErr.WriteLine(strMessage)
+  ElseIf InStr(1, WScript.FullName, "wscript", vbTextCompare) Then
+      MsgBox strMessage
+  end if
 
 End Sub
 
