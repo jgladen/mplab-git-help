@@ -37,8 +37,8 @@ Sub Main
 		On Error Resume Next
 		Set oFile = fso.GetFile(strPath)
 		On Error Goto 0
-		If Not oFile Is Nothing Then 
-			If Not IsEmpty(dtLastModified) Then 				
+		If IsObject(oFile) Then
+			If Not IsEmpty(dtLastModified) Then
 				If dtLastModified < oFile.DateLastModified Then
 					dtLastModified = oFile.DateLastModified
 				End If
