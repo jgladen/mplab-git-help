@@ -9,7 +9,7 @@ COMMIT_HEX_EXPERIMENT_DIR = ['hex', 'experimental']
 
 if __name__ == "__main__":
     from subprocess import PIPE, Popen
-    from os import path, makedirs
+    from os import path, makedirs, environ
     from time import localtime, struct_time
     from math import floor
     import re
@@ -30,6 +30,10 @@ if __name__ == "__main__":
         print(
             '{} requires only a single command-line argument'.format(path.basename(argv[0])))
         usage()
+
+    if environ.get('TYPE_IMAGE', None) == 'DEBUG_RUN':
+        print('{} skipping bebug build'.format(argv[0]))
+        quit(0)
 
     if not path.exists(argv[1]):
         print('{} can not find file "{}"'.format(
@@ -71,9 +75,9 @@ if __name__ == "__main__":
         #   MMM is hex minute of day
         #   n is 1/16 fraction of a minute
         #   noon -> 2D00, 23:59:59 -> 59FF
-        latest_hex = "{:03X}{:01X}".format(
-            latest_struct.tm_hour*60 + latest_struct.tm_min,
-            floor(latest_struct.tm_sec/3.75))
+        latest_hex = "{:03x}{:01x}".format(
+            int(latest_struct.tm_hour*60 + latest_struct.tm_min),
+            int(floor(latest_struct.tm_sec/3.75)))
 
         print('Latest Last Modified: {:02d}:{:02d}:{:02d} -> {} of {} files from: git status'.format(
             latest_struct.tm_hour, latest_struct.tm_min, latest_struct.tm_sec,
@@ -111,7 +115,8 @@ if __name__ == "__main__":
     commit_dir = COMMIT_HEX_EXPERIMENT_DIR if len(
         status_mtimes) else COMMIT_HEX_COMMIT_DIR
 
-    hex_file = path.join(working_folder_root, *commit_dir, safe_file_name)
+    hex_path = path.join(working_folder_root, *commit_dir)
+    hex_file = path.join(hex_path, safe_file_name)
 
     if not path.exists(path.dirname(hex_file)):
         try:

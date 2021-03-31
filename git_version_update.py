@@ -6,8 +6,8 @@ TEMPLATE = """// DO NOT EDIT Generated in version-update.py
 // see: https://github.com/jgladen/mplab-git-extensions-helpers
 
 #include "version.h"
-const char __attribute__((section("version"), space(prog))) GIT_VERSION[32] = "{0:s}";
-const char __attribute__((section("version"), space(prog))) GIT_REVISION[32] = "{1:s}";
+const char __attribute__((section("version"))) GIT_VERSION[32] = "{0:s}";
+const char __attribute__((section("version"))) GIT_REVISION[32] = "{1:s}";
 """
 
 VERSION_FILE_PATH = ['version.c']
@@ -56,9 +56,9 @@ if __name__ == "__main__":
         #   MMM is hex minute of day
         #   n is 1/16 fraction of a minute
         #   noon -> 2D00, 23:59:59 -> 59FF
-        latest_hex = "{:03X}{:01X}".format(
-            latest_struct.tm_hour*60 + latest_struct.tm_min,
-            floor(latest_struct.tm_sec/3.75))
+        latest_hex = "{:03x}{:01x}".format(
+            int(latest_struct.tm_hour*60 + latest_struct.tm_min),
+            int(floor(latest_struct.tm_sec/3.75)))
 
         print('Latest Last Modified: {:02d}:{:02d}:{:02d} -> {} of {} files from: git status'.format(
             latest_struct.tm_hour, latest_struct.tm_min, latest_struct.tm_sec,
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         file = open(version_output_file, 'r')
         current_content = file.read()
         file.close()
-    
+
     if revised_content == current_content:
         print('Version file is up to date: {}'.format(version_output_file))
     else:
