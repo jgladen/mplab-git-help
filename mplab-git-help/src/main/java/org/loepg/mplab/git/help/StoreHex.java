@@ -1,9 +1,12 @@
 package org.loepg.mplab.git.help;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -47,6 +50,8 @@ public class StoreHex {
       usage();
     }
 
+    String srcPath = args[0];
+
     String type_image = System.getenv("TYPE_IMAGE");
     System.out.printf("mplab-git-help: TYPE_IMAGE: \"%s\"\n", type_image);
 
@@ -79,20 +84,20 @@ public class StoreHex {
 
     Status status = git.status().call();
 
-    String describe =null ;
-    
+    String describe = null;
+
     try {
-      describe= git.describe()
+      describe = git.describe()
           .setTags(true)
           .setLong(true)
           .setAbbrev(7)
           .setAlways(true)
           .call();
-    }catch(org.eclipse.jgit.api.errors.RefNotFoundException e){
+    } catch (org.eclipse.jgit.api.errors.RefNotFoundException e) {
       System.out.println("mplab-git-help StoreHex: Can't any git History!! Did you COMMIT yet?");
-      System.exit(-1);      
+      System.exit(-1);
     }
-    
+
     // take tag if you got it
     // include in tag -count unless it's -0 (on tag)
     // drop the -g or -
@@ -175,7 +180,24 @@ public class StoreHex {
 
     String safe_file_name = String.format("%s, %s.hex", tagVersion, revision);
 
-    System.out.printf("source:%s\ndest:%s/%s\n", args[0], destinationFolder, safe_file_name);
+    System.out.printf("source:%s\ndest:%s/%s\n", srcPath, destinationFolder, safe_file_name);
+
+    File directory = new File(destinationFolder);
+    if (!directory.exists()) {
+      directory.mkdirs();
+    }
+
+    try {
+
+      Path src = Paths.get(srcPath);
+      Path dst = Paths.get(destinationFolder, safe_file_name);
+
+      Files.copy(src, dst, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING);
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      System.exit(-1);
+    }
 
     git.close();
   }
