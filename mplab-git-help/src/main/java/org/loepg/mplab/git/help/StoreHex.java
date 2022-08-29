@@ -1,33 +1,22 @@
 package org.loepg.mplab.git.help;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.TimeZone;
-import java.util.Calendar;
-import java.util.HashSet;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.regex.MatchResult;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
-import org.eclipse.jgit.api.StatusCommand;
-import org.eclipse.jgit.api.DescribeCommand;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 /**
  * StoreHex utility for post-build rule in MPLAB X project makefile
@@ -99,30 +88,28 @@ public class StoreHex {
     // drop the -g or -
     // revision hash is 7 hexidecimal digits
     Pattern reDesribe = Pattern.compile("^(.*?)(?:-0)?(?:-g?)?([0-9a-f]{7})");
-    // Pattern reDesribe = Pattern.compile("(.{4})(.*)");
 
     Matcher matchDescribe = reDesribe.matcher(describe);
 
     String tagVersion = "ERR";
     String revision = "ERR";
+    String destinationFolder = ARTIFACT_EXPERIMENT_PATH;
 
     if (matchDescribe.matches()) {
-      tagVersion = matchDescribe.group(0) == null ? "No version" : matchDescribe.group(0);
-      revision = String.format("rev:%s", matchDescribe.group(1));
+      tagVersion = matchDescribe.group(1).length() == 0 ? "No version" : matchDescribe.group(1);
+      revision = matchDescribe.group(2);
       System.out.printf("describe: %s\n", describe);
     }
 
     if (status.isClean()) {
-      // System.out.printf("Clean: %s.hex", describe);
       revision = String.format("rev:%s", revision);
-
+      destinationFolder = ARTIFACT_COMMIT_PATH;
     } else {
 
       HashSet<String> status_paths = new HashSet<String>();
       status_paths.addAll(status.getUntracked());
       status_paths.addAll(status.getUncommittedChanges());
       status_paths.addAll(status.getModified());
-      
 
       Instant latest_mtime = null;
       String latest_file = "";
@@ -142,8 +129,8 @@ public class StoreHex {
           }
           System.out.printf("file: %s %s \n", fileTime, filename);
         } else {
-          System.out.printf("missing file: %s \n",  filename);
-        
+          System.out.printf("missing file: %s \n", filename);
+
         }
 
       }
@@ -152,7 +139,6 @@ public class StoreHex {
 
         LocalDateTime localDateTime = latest_mtime.atZone(ZoneId.systemDefault()).toLocalDateTime();
 
-        int h, m, s;
         int hour = localDateTime.getHour();
         int minute = localDateTime.getMinute();
         int second = localDateTime.getSecond();
@@ -179,10 +165,7 @@ public class StoreHex {
 
     String safe_file_name = String.format("%s, %s.hex", tagVersion, revision);
 
-    System.out.printf("copy: %s to %s \n", args[0], safe_file_name);
-
-    // String tagVersion = "v.001";
-    // String revision = "x0x0x0";
+    System.out.printf("source:%s\n dest:%s/%s\n", args[0], destinationFolder, safe_file_name);
 
     git.close();
   }
