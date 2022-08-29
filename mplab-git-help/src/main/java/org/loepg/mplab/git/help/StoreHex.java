@@ -51,21 +51,24 @@ public class StoreHex {
     System.out.printf("mplab-git-help: TYPE_IMAGE: \"%s\"\n", type_image);
 
     if (type_image != null && type_image.equals("DEBUG_RUN")) {
-      System.out.println("mplab-git-help: skipping bebug build");
+      System.out.println("mplab-git-help: skipping debug build");
       System.exit(0);
     }
 
     System.out.println("Standby");
 
-    // File workingDirectory = new File(".");
-
     FileRepositoryBuilder repositoryBuilder = new FileRepositoryBuilder();
-    Repository repository = repositoryBuilder
-        // .setGitDir(new File("."))
-        .readEnvironment() // scan environment GIT_* variables
-        .findGitDir() // scan up the file system tree
-        .setMustExist(true)
-        .build();
+    Repository repository = null;
+    try {
+      repository = repositoryBuilder
+          .readEnvironment() // scan environment GIT_* variables
+          .findGitDir() // scan up the file system tree
+          .setMustExist(true)
+          .build();
+    } catch (java.lang.IllegalArgumentException e) {
+      System.out.println("mplab-git-help StoreHex: Can't find git repository!! Did you git INIT it yet?");
+      System.exit(-1);
+    }
 
     if (repository.getDirectory() == null) {
       System.out.println("mplab-git-help: Could Not Find git Repo");
@@ -76,13 +79,20 @@ public class StoreHex {
 
     Status status = git.status().call();
 
-    String describe = git.describe()
-        .setTags(true)
-        .setLong(true)
-        .setAbbrev(7)
-        .setAlways(true)
-        .call();
-
+    String describe =null ;
+    
+    try {
+      describe= git.describe()
+          .setTags(true)
+          .setLong(true)
+          .setAbbrev(7)
+          .setAlways(true)
+          .call();
+    }catch(org.eclipse.jgit.api.errors.RefNotFoundException e){
+      System.out.println("mplab-git-help StoreHex: Can't any git History!! Did you COMMIT yet?");
+      System.exit(-1);      
+    }
+    
     // take tag if you got it
     // include in tag -count unless it's -0 (on tag)
     // drop the -g or -
@@ -165,7 +175,7 @@ public class StoreHex {
 
     String safe_file_name = String.format("%s, %s.hex", tagVersion, revision);
 
-    System.out.printf("source:%s\n dest:%s/%s\n", args[0], destinationFolder, safe_file_name);
+    System.out.printf("source:%s\ndest:%s/%s\n", args[0], destinationFolder, safe_file_name);
 
     git.close();
   }
