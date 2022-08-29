@@ -1,6 +1,8 @@
+package org.loepg.mplab.git.help;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
@@ -23,6 +25,9 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.DescribeCommand;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.internal.storage.file.FileRepository;
+import org.eclipse.jgit.lib.Repository;
 
 /**
  * StoreHex utility for post-build rule in MPLAB X project makefile
@@ -41,7 +46,8 @@ public class StoreHex {
     System.err.println("Usage: java -cp mplab-git-help.jar StoreHex PATH_TO_HEX_FILE");
     System.err.println(" ----8<----- in Makefile try: --------");
     System.err.println(".build-post: .build-impl");
-    System.err.println("     ${MP_JAVA_PATH}java -cp mplab-git-help.jar StoreHex \"${CND_ARTIFACT_PATH_${CONF}}\"");
+    System.err.println(
+        "     ${MP_JAVA_PATH}java -cp git-help.jar org.loepg.mplab.git.help.StoreHex \"${CND_ARTIFACT_PATH_${CONF}}\"");
     System.err.println(" ----8<----- in Makefile try: --------");
     System.exit(-2);
   }
@@ -62,9 +68,22 @@ public class StoreHex {
 
     System.out.println("Standby");
 
-    File repo = new File("./.git");
+    // File workingDirectory = new File(".");
 
-    Git git = Git.open(repo);
+    FileRepositoryBuilder repositoryBuilder = new FileRepositoryBuilder();
+    Repository repository = repositoryBuilder
+        // .setGitDir(new File("."))
+        .readEnvironment() // scan environment GIT_* variables
+        .findGitDir() // scan up the file system tree
+        .setMustExist(true)
+        .build();
+
+    if (repository.getDirectory() == null) {
+      System.out.println("mplab-git-help: Could Not Find git Repo");
+      System.exit(-1);
+    }
+
+    Git git = new Git(repository);
 
     Status status = git.status().call();
 
@@ -102,44 +121,55 @@ public class StoreHex {
       HashSet<String> status_paths = new HashSet<String>();
       status_paths.addAll(status.getUntracked());
       status_paths.addAll(status.getUncommittedChanges());
+      status_paths.addAll(status.getModified());
+      
 
       Instant latest_mtime = null;
-      String latest_file="";
+      String latest_file = "";
 
       Iterator<String> ciFilepath = status_paths.iterator();
       while (ciFilepath.hasNext()) {
-        final String filepath = ciFilepath.next();
+        String filename = ciFilepath.next();
+        Path filepath = Paths.get(filename);
 
-        FileTime fileTime = Files.getLastModifiedTime(Paths.get(filepath));
-        Instant mtime = fileTime.toInstant();
+        if (Files.exists(filepath, LinkOption.NOFOLLOW_LINKS)) {
+          FileTime fileTime = Files.getLastModifiedTime(filepath);
+          Instant mtime = fileTime.toInstant();
 
-        if (latest_mtime == null || latest_mtime.compareTo(mtime) < 0) {
-          latest_mtime = mtime;
-          latest_file = filepath;
+          if (latest_mtime == null || latest_mtime.compareTo(mtime) < 0) {
+            latest_mtime = mtime;
+            latest_file = filename;
+          }
+          System.out.printf("file: %s %s \n", fileTime, filename);
+        } else {
+          System.out.printf("missing file: %s \n",  filename);
+        
         }
 
-        // System.out.printf("file: %s %s \n", fileTime, filepath);
       }
 
-      LocalDateTime localDateTime = latest_mtime.atZone(ZoneId.systemDefault()).toLocalDateTime();
+      if (latest_mtime != null) {
 
+        LocalDateTime localDateTime = latest_mtime.atZone(ZoneId.systemDefault()).toLocalDateTime();
 
-      int h,m,s;
-      int hour =localDateTime.getHour();
-      int minute  =localDateTime.getMinute();
-      int second = localDateTime.getSecond();
+        int h, m, s;
+        int hour = localDateTime.getHour();
+        int minute = localDateTime.getMinute();
+        int second = localDateTime.getSecond();
 
-      int dayMinute = hour*60+minute;
-      int hexSecond = Math.floorDiv(second*16,60);
-      
-            
-      String latest_hex = String.format( "%03X%01X", dayMinute,hexSecond);
-      
-      System.out.printf("Last File Modified: %s\n",latest_file);
-      System.out.printf("Modified Time:%02d:%02d:%02d, minute of day:0x%03X (%d), 1/16 minute: 0x%01X (%d) => 0x%s\n",
-       hour,minute,second,dayMinute,dayMinute,hexSecond,hexSecond,latest_hex);
-      
-      revision = String.format("X:%s_%s", revision, latest_hex);
+        int dayMinute = hour * 60 + minute;
+        int hexSecond = Math.floorDiv(second * 16, 60);
+
+        String latest_hex = String.format("%03X%01X", dayMinute, hexSecond);
+
+        System.out.printf("Last File Modified: %s\n", latest_file);
+        System.out.printf("Modified Time:%02d:%02d:%02d, minute of day:0x%03X (%d), 1/16 minute: 0x%01X (%d) => 0x%s\n",
+            hour, minute, second, dayMinute, dayMinute, hexSecond, hexSecond, latest_hex);
+
+        revision = String.format("X:%s_%s", revision, latest_hex);
+      } else {
+        revision = String.format("X:%s_XXXX", revision);
+      }
 
     }
 
@@ -154,5 +184,6 @@ public class StoreHex {
     // String tagVersion = "v.001";
     // String revision = "x0x0x0";
 
+    git.close();
   }
 }

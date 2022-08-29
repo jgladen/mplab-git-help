@@ -1,28 +1,5 @@
-# general build and cruft
+# Ignore Gradle project-specific cache directory
+.gradle
 
-*.d
-*.pre
-*.p1
-*.lst
-*.sym
-*.obj
-*.o
-*.sdb
-*.obj.dmp
-html/
-nbproject/private/
-nbproject/Package-*.bash
-build/
-nbbuild/
-dist/
-nbdist/
-nbactions.xml
-nb-configuration.xml
-funclist
-nbproject/Makefile-*
-disassembly/
-*.map
-
-# exclude helper generated output
-hex/
-/version.c
+# Ignore Gradle build output directory
+build
