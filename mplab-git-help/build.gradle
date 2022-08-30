@@ -16,7 +16,7 @@ dependencies {
 
 task customFatJar(type: Jar) {
     manifest {
-        attributes 'Main-Class': 'org.loepg.mplab.git.help.StoreHex'
+        attributes 'Main-Class': 'StoreHex'
     }
     baseName = 'mplab-git-help-v1'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE

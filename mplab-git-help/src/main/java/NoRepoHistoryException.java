@@ -1,4 +1,3 @@
-package org.loepg.mplab.git.help;
 
 public class NoRepoHistoryException extends Exception{
     public NoRepoHistoryException(){
