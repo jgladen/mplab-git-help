@@ -130,6 +130,8 @@ public class FreshenVersion {
             outputPath = Path.of(opt.getOptionValue("out"));
         }
 
+        replacements.put("file", outputPath.toString());
+
         if (!forceNewContent) {
             try {
                 originalContent = Files.readString(outputPath);
@@ -141,7 +143,7 @@ public class FreshenVersion {
 
         if (opt.hasOption("template")) {
             source = opt.getOptionValue("template");
-            replacements.put("source", String.format("template:", source));
+            replacements.put("source", source);
             Path templatePath = Path.of(opt.getOptionValue("template"));
             try {
                 template = Files.readString(templatePath);
@@ -154,15 +156,17 @@ public class FreshenVersion {
             replacements.put("source", "FreshenVersion built-in template");
 
             template = String.join("\r\n",
+
                     "// %{warning}",
+                    "// File: %{file}",
+                    "// template: %{source}",
                     "// see: https://github.com/jgladen/mplab-git-help",
-                    "// %{source}",
-                    "// %%{source}",
                     "",
                     "#include \"version.h\"",
                     "",
                     "const char __attribute__((section(\"version\"))) GIT_VERSION[32] = \"%{version}\";",
                     "const char __attribute__((section(\"version\"))) GIT_REVISION[32] = \"%{revision}\";",
+                    "// %{warning}",
                     "");
         }
 
