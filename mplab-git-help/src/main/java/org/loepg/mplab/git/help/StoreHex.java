@@ -24,11 +24,10 @@ public class StoreHex {
    * 
    */
   static void usage() {
-    System.out.println("Usage: java -cp mplab-git-help.jar StoreHex PATH_TO_HEX_FILE");
+    System.out.println("Usage: java -cp mplab-git-help-v1.jar org.loepg.mplab.git.help.StoreHex PATH_TO_HEX_FILE");
     System.out.println(" ----8<----- in Makefile try: --------");
     System.out.println(".build-post: .build-impl");
-    System.out.println(
-        "     ${MP_JAVA_PATH}java -cp git-help.jar org.loepg.mplab.git.help.StoreHex \"${CND_ARTIFACT_PATH_${CONF}}\"");
+    System.out.println("     ${MP_JAVA_PATH}java -cp git-help.jar org.loepg.mplab.git.help.StoreHex \"${CND_ARTIFACT_PATH_${CONF}}\"");
     System.out.println(" ----8<----- in Makefile try: --------");
     System.exit(-2);
   }
