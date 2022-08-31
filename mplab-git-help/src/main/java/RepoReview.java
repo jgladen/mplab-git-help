@@ -48,7 +48,7 @@ public class RepoReview {
         } catch (IllegalArgumentException e) {
             throw new MissingRepoException();
         } catch (IOException e) {
-            System.err.println("File access problems on folder");
+            // System.err.println("File access problems on folder");
             throw new MissingRepoException();
         }
 
@@ -117,6 +117,8 @@ public class RepoReview {
                         // System.out.printf("file: %s %s \n", fileTime, filename);
 
                     } catch (IOException e) {
+
+                        // TODO: Throw exception?        
                         System.err.printf("File access problems on file: %s", filename);
                     }
                 }

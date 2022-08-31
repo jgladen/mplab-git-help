@@ -1,7 +1,9 @@
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -17,7 +19,13 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 public class FreshenVersion {
 
     private static Pattern reIntepolation = Pattern
-            .compile("%%|%\\{(\\s*[^\\[}]+)\\s*(?:\\[\\s*(\\d+)\\s*(:\\s*(\\d+)\\s*)?\\])?}");
+            .compile("%%|" +
+                    "%\\{\\s*" +
+                    "([^\\[}+]+)\\s*" +
+                    "(?:\\[\\s*(-?\\d+)\\s*(:\\s*(-?\\d+)\\s*)?\\])?\\s*" +
+                    "([-+]?\\d+)?\\s*" +
+                    "\\}");
+    private static Pattern reLine = Pattern.compile("(.*?)(?:\\r\\n?|\\n|$)");
 
     private static CommandLine parseArgs(String[] args) {
         final Options options = new Options();
@@ -29,6 +37,7 @@ public class FreshenVersion {
         options.addOption("R", "revision", true, "padded width of revision");
         options.addOption("r", "right", false, "right justify version/revision with padding");
         options.addOption("V", "version", true, "padded width of version");
+        options.addOption("z", "shebang", false, "stitch together the shebang exploded file name");
 
         CommandLineParser parser = new DefaultParser();
 
@@ -83,69 +92,117 @@ public class FreshenVersion {
 
     }
 
+    /**
+     * replaces interpoltations of the form %{key} or %{key[x:y]} where key is in
+     * replacments
+     * 
+     * @param source
+     * @param template
+     * @param replacements
+     * @param padCharSeq
+     * @return
+     * @throws InvalidTemplateVariable
+     */
     private static String applyReplacements(
             String source,
             String template,
             HashMap<String, String> replacements,
             String padCharSeq) throws InvalidTemplateVariable {
 
-        Matcher intepolations = FreshenVersion.reIntepolation.matcher(template);
         StringBuilder contentBuilder = new StringBuilder();
 
-        while (intepolations.find()) {
-            String variableName = intepolations.group(1);
-            String index1 = intepolations.group(2);
-            String range = intepolations.group(3);
-            String index2 = intepolations.group(4);
-            String replaceWith = "%";
-            int start;
-            int stop;
+        // String[] lines = template.split("\n");
 
-            if (variableName != null) {
-                if (!replacements.containsKey(variableName)) {
-                    throw new InvalidTemplateVariable(source, variableName);
-                }
-                replaceWith = replacements.get(variableName);
+        int nLine = 0;
+
+        Matcher lines = FreshenVersion.reLine.matcher(template);
+
+        while (lines.find()) {
+            nLine++;
+            String line = lines.group(0);
+
+            if (nLine == 1 && lines.group(0).startsWith("#")) {
+                continue;
             }
 
-            start = 0;
-            stop = replaceWith.length();
+            Matcher intepolations = FreshenVersion.reIntepolation.matcher(line);
 
-            if (range != null) {
-                if (index1 != null) {
-                    start = Integer.parseInt(index1);
+            while (intepolations.find()) {
+                String variableName = intepolations.group(1);
+                String index1 = intepolations.group(2);
+                String range = intepolations.group(3);
+                String index2 = intepolations.group(4);
+                String offset = intepolations.group(5);
+
+                String replaceWith = "%";
+                int start;
+                int stop;
+
+                if (variableName != null) {
+                    if (replacements.containsKey(variableName)) {
+                        replaceWith = replacements.get(variableName);
+                    } else if (variableName.equals("line")) {
+                        int nOffset = 1;
+                        if (offset != null) {
+                            nOffset = Integer.parseInt(offset);
+                        }
+                        replaceWith = Integer.toString(nLine + nOffset);
+                    } else {
+                        throw new InvalidTemplateVariable(source, nLine, variableName);
+                    }
                 }
-                if (index2 != null) {
-                    stop = Integer.parseInt(index2);
-                }
 
-            } else if (index1 != null) {
-                start = Integer.parseInt(index1);
-                stop = start + 1;
-            }
-
-            int nPad = 0;
-
-            if (stop < start) {
-                stop = start;
-            }
-
-            if (stop > replaceWith.length()) {
-                nPad = stop - replaceWith.length();
+                start = 0;
                 stop = replaceWith.length();
+
+                if (range != null) {
+                    if (index1 != null) {
+                        start = Integer.parseInt(index1);
+                    }
+                    if (index2 != null) {
+                        stop = Integer.parseInt(index2);
+                    }
+
+                } else if (index1 != null) {
+                    start = Integer.parseInt(index1);
+                    stop = start + 1;
+                }
+
+                int nPad = 0;
+
+                if (start < 0) {
+                    start += replaceWith.length();
+                    if (start < 0) {
+                        start = 0;
+                    }
+                }
+
+                if (stop < 0) {
+                    stop += replaceWith.length();
+                }
+
+                if (stop < start) {
+                    stop = start;
+                }
+
+                if (stop > replaceWith.length()) {
+                    nPad = stop - replaceWith.length();
+                    stop = replaceWith.length();
+                }
+
+                if (start > replaceWith.length()) {
+                    nPad -= start - replaceWith.length();
+                    start = replaceWith.length();
+                }
+
+                replaceWith = replaceWith.substring(start, stop) + padCharSeq.repeat(nPad);
+
+                intepolations.appendReplacement(contentBuilder, Matcher.quoteReplacement(replaceWith));
+
             }
-
-            if (start > replaceWith.length()) {
-                nPad -= start - replaceWith.length();
-                start = replaceWith.length();
-            }
-
-            replaceWith = replaceWith.substring(start, stop) + padCharSeq.repeat(nPad);
-
-            intepolations.appendReplacement(contentBuilder, Matcher.quoteReplacement(replaceWith));
+            intepolations.appendTail(contentBuilder);
 
         }
-        intepolations.appendTail(contentBuilder);
 
         return contentBuilder.toString();
 
@@ -173,7 +230,8 @@ public class FreshenVersion {
         String originalContent = null;
         String newContent = null;
 
-        Path outputPath = Path.of(outputFile);
+        // TODO: Check if works drive letter in outputFile
+        Path outputPath = Paths.get(outputFile);
 
         replacements.put("file", outputFile);
 
@@ -210,8 +268,12 @@ public class FreshenVersion {
         } else {
             newContent = "";
             for (String source : sourceFiles) {
+
+                source = source.replace("\\", "/");
+
                 replacements.put("source", source);
-                Path templatePath = Path.of(source);
+                System.out.printf("source \"%s\"\n", source);
+                Path templatePath = Paths.get(new File(source).toURI());
 
                 try {
                     template = Files.readString(templatePath);
@@ -246,7 +308,14 @@ public class FreshenVersion {
 
             repoReview.inspect();
 
-            String[] templateFiles = opt.getArgs();
+            String[] templateFiles;
+
+            if (opt.hasOption("shebang")) {
+                templateFiles = new String[1];
+                templateFiles[0] = String.join(" ", opt.getArgs());
+            } else {
+                templateFiles = opt.getArgs();
+            }
 
             String version = FreshenVersion.pad("version", repoReview.tagVersion, opt);
             String revision = FreshenVersion.pad("revision", repoReview.revision, opt);
@@ -286,7 +355,7 @@ public class FreshenVersion {
                 | InvalidTemplateVariable
                 | WriteOutputFileException
                 | GitAPIException e) {
-            System.err.println("FreshenVersion: " + e.getMessage());
+            System.out.println("FreshenVersion: " + e.getMessage());
             if (e instanceof MissingRepoException) {
                 System.exit(-2);
             } else if (e instanceof NoRepoHistoryException) {
