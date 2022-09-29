@@ -5,12 +5,21 @@ repositories {
 }
 
 dependencies {
-    implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
-    implementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.25'
-    implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '6.2.0.202206071550-r'
+    // implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '6.2.0.202206071550-r'
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    //implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.36'
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
+    // implementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.36'
+
+
+    // https://mvnrepository.com/artifact/com.googlecode.javaewah/JavaEWAH
+    implementation group: 'com.googlecode.javaewah', name: 'JavaEWAH', version: '1.1.13'
+
     
-    // https://mvnrepository.com/artifact/commons-cli/commons-cli
-    implementation group: 'commons-cli', name: 'commons-cli', version: '1.5.0'
+    // // https://mvnrepository.com/artifact/commons-cli/commons-cli
+    // implementation group: 'commons-cli', name: 'commons-cli', version: '1.5.0'
 
 }
 
@@ -24,4 +33,11 @@ task customFatJar(type: Jar) {
         exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
     }
     with jar
+}
+
+buildscript {
+    tasks.withType(JavaCompile) {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
 }
